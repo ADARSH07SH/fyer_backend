@@ -19,7 +19,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const fyers = new fyersModel({
   path: "./logs",
-  enableLogging: true,
+  enableLogging: false,
 });
 fyers.setAppId(FYERS_APP_ID);
 fyers.setRedirectUrl(FYERS_REDIRECT_URL);
@@ -61,6 +61,23 @@ app.get("/admin", async (req, res) => {
   }
 });
 
+app.get("/profie", async(req, res) => {
+    await fyers.get_profile().then((response) => {
+        console.log(response);
+    }).catch((err)=> {
+        console.log(err);
+    })
+})
+app.get("/getquote", async(req, res) => {
+    await fyers
+      .getQuotes(["NSE:SBIN-EQ", "NSE:TCS-EQ"])
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+})
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
