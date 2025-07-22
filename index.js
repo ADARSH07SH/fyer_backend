@@ -12,7 +12,7 @@ const FYERS_REDIRECT_URL = process.env.FYERS_REDIRECT_URL;
 
 
 
-
+app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
 
@@ -23,6 +23,11 @@ const fyers = new fyersModel({
 
 fyers.setAppId(FYERS_APP_ID);
 fyers.setRedirectUrl(FYERS_REDIRECT_URL);
+
+
+app.get("/", (req, res) => {
+  res.redirect("/login.html");
+});
 
 
 app.get("/login", (req, res) => {
@@ -49,7 +54,8 @@ app.get("/admin", async (req, res) => {
     });
 
     console.log("Access Token:", tokenResponse);
-    res.send("Access token generated. Check console.");
+    res.redirect("/admin.html");
+
   } catch (err) {
     console.error("Error generating access token:", err);
     res.status(500).send("Token generation failed.");
