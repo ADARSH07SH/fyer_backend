@@ -5,28 +5,28 @@ const { fyersModel } = require("fyers-api-v3");
 const app = express();
 const PORT = 8080;
 
-// Load env variables
+
 const FYERS_APP_ID = process.env.FYERS_APP_ID;
 const FYERS_SECRET_ID = process.env.FYERS_SECRET_ID;
 const FYERS_REDIRECT_URL = process.env.FYERS_REDIRECT_URL;
 
+app.set("view engine", "ejs");
+app.set("views", __dirname + "/views");
 
 
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
-
 const fyers = new fyersModel({
   path: "./logs",
   enableLogging: true,
 });
-
 fyers.setAppId(FYERS_APP_ID);
 fyers.setRedirectUrl(FYERS_REDIRECT_URL);
 
 
 app.get("/", (req, res) => {
-  res.redirect("/login.html");
+  res.render("login");
 });
 
 
@@ -54,15 +54,14 @@ app.get("/admin", async (req, res) => {
     });
 
     console.log("Access Token:", tokenResponse);
-    res.redirect("/admin.html");
-
+    res.render("admin", { token: tokenResponse });
   } catch (err) {
     console.error("Error generating access token:", err);
     res.status(500).send("Token generation failed.");
   }
 });
 
-// Start the server
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
