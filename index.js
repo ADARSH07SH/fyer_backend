@@ -61,23 +61,26 @@ app.get("/admin", async (req, res) => {
   }
 });
 
-app.get("/profie", async(req, res) => {
-    await fyers.get_profile().then((response) => {
-        console.log(response);
-    }).catch((err)=> {
-        console.log(err);
-    })
-})
-app.get("/getquote", async(req, res) => {
-    await fyers
-      .getQuotes(["NSE:SBIN-EQ", "NSE:TCS-EQ"])
-      .then((response) => {
-        console.log(response);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-})
+app.get("/profile", async (req, res) => {
+  try {
+    const response = await fyers.get_profile();
+    res.json(response);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
+
+app.get("/getquote", async (req, res) => {
+  const symbols = req.query.symbols?.split(",") || [];
+  try {
+    const response = await fyers.getQuotes(symbols);
+    res.json(response);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Quote fetch failed" });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
