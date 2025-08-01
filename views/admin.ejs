@@ -4,7 +4,7 @@
   <title>FYERS Admin</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: Arial;
       padding: 30px;
     }
     pre {
@@ -14,34 +14,12 @@
       max-width: 800px;
       overflow-x: auto;
     }
-    button {
-      margin: 10px;
-      padding: 10px 20px;
-      background-color: #007bff;
-      border: none;
-      color: white;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    a {
-      text-decoration: none;
-    }
   </style>
 </head>
 <body>
-  <h1>FYERS Admin Dashboard</h1>
-
-  <h2>Access Token Info</h2>
+  <h1>FYERS Access Token Saved</h1>
+  <p>Token is saved and server is ready to respond to quote requests.</p>
+  <h2>Token Response</h2>
   <pre><%= JSON.stringify(token, null, 2) %></pre>
-
-  <h2>Test Endpoints</h2>
-  <a href="/profile"><button> Get Profile</button></a>
-  <a href="/getquote"><button> Get Default Quote</button></a>
-  <a href="/api/quote?symbols=NSE:TCS-EQ,NSE:SBIN-EQ"><button> Dynamic Quote API</button></a>
-  <a href="/api/depth?symbols=NSE:TCS-EQ"><button> Market Depth API</button></a>
-  <a href="/stock/TCS"><button> /stock/:symbol (TCS)</button></a>
 </body>
 </html>
