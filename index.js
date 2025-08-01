@@ -150,14 +150,14 @@ app.listen(PORT, () => {
 
 app.get("/stock/:stockname", async (req, res) => {
   const stockname = req.params.stockname.toUpperCase();
+  const symbol = `NSE:${stockname}-EQ`;
 
   try {
-    const quote = await fyers.getQuotes([`NSE${stockname}`]);
-
-    console.log(stockname);
-    console.log(quote.d);
+    const quote = await fyers.getQuotes([symbol]);
+    console.log(`[Stock Fetch] Symbol: ${symbol}`);
     res.json(quote);
   } catch (error) {
-    console.log(error);
+    console.error(`[Stock Fetch Error] ${symbol}`, error);
+    res.status(500).json({ error: "Failed to fetch stock quote" });
   }
 });

@@ -3,29 +3,45 @@
 <head>
   <title>FYERS Admin</title>
   <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 30px;
+    }
     pre {
       background-color: #f7f7f7;
       padding: 15px;
       border-radius: 8px;
-      max-width: 700px;
+      max-width: 800px;
       overflow-x: auto;
     }
     button {
       margin: 10px;
       padding: 10px 20px;
+      background-color: #007bff;
+      border: none;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    a {
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <h1>Access Token Received</h1>
+  <h1>FYERS Admin Dashboard</h1>
 
-  <h3>Access Token Response:</h3>
+  <h2>Access Token Info</h2>
   <pre><%= JSON.stringify(token, null, 2) %></pre>
 
-  <h2>Available Actions</h2>
-  <a href="/profile"><button>Get Profile</button></a>
-  <a href="/getquote/tcs"><button>Get Default Quote</button></a>
-  <a href="/api/quote?symbols=NSE:TCS-EQ,NSE:SBIN-EQ"><button>Quote API (Dynamic)</button></a>
-  <a href="/api/depth?symbols=NSE:TCS-EQ"><button>Market Depth API</button></a>
+  <h2>Test Endpoints</h2>
+  <a href="/profile"><button> Get Profile</button></a>
+  <a href="/getquote"><button> Get Default Quote</button></a>
+  <a href="/api/quote?symbols=NSE:TCS-EQ,NSE:SBIN-EQ"><button> Dynamic Quote API</button></a>
+  <a href="/api/depth?symbols=NSE:TCS-EQ"><button> Market Depth API</button></a>
+  <a href="/stock/TCS"><button> /stock/:symbol (TCS)</button></a>
 </body>
 </html>
