@@ -87,3 +87,31 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`FYERS Backend running at http://localhost:${PORT}`);
 });
+
+app.get("/chartData/:stockname", apiKeyAuth,async (req, res) => {
+  const record = await FyersToken.findOne();
+  if (!record || !record.token) {
+    return res.status(401).json({error:"Token missing"})
+  }
+
+  const token = record.token;
+  const stockname = req.params.stockname.toUpperCase();
+  const symbol = `NSE:${stockname}-EQ`;
+  fyer.setAccessToken(token);
+  var inp = {
+    symbol: `${symbol}`,
+    resolution: "5",
+    data_format: "1",
+    range_from: "1690895400",
+    range_to: "1690976400",
+    cont_flag: "1",
+  };
+  try {
+    fyers.getHistory(inp).then((response) => {
+      console.log(response);
+    })
+  } catch (error) {
+     res.status(500).json({ error: "Failed to fetch " });
+
+  }
+})
