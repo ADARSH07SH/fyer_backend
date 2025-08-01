@@ -54,6 +54,8 @@ app.get("/admin", async (req, res) => {
 
     if (tokenResponse.s === "ok") {
       fs.writeFileSync(tokenFile, tokenResponse.access_token);
+      console.log("Saving token to file:", tokenResponse.access_token);
+
       fyers.setAccessToken(tokenResponse.access_token);
       res.render("admin", { token: tokenResponse });
     } else {
@@ -64,8 +66,8 @@ app.get("/admin", async (req, res) => {
   }
 });
 
-// Main secure quote endpoint
-app.get("/stock/:stockname", apiKeyAuth, async (req, res) => {
+
+app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   const token = getSavedToken();
   if (!token) {
     return res.status(401).json({ error: "Token missing. Login required." });
