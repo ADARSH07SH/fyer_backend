@@ -15,7 +15,7 @@ const FYERS_APP_ID = process.env.FYERS_APP_ID;
 const FYERS_SECRET_ID = process.env.FYERS_SECRET_ID;
 const FYERS_REDIRECT_URL = process.env.FYERS_REDIRECT_URL;
 
-const fyers = new fyersModel({ path: path.join(__dirname, "logs") });
+const fyers = new fyersModel();
 fyers.setAppId(FYERS_APP_ID);
 fyers.setRedirectUrl(FYERS_REDIRECT_URL);
 
@@ -110,7 +110,7 @@ app.get("/chartData/:stockname", apiKeyAuth, async (req, res) => {
 
   const inp = {
     symbol: symbol,
-    resolution: "5", 
+    resolution: "5",
     date_format: "1",
     range_from,
     range_to,
