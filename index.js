@@ -155,6 +155,7 @@ app.get("/stock/:stockname", async (req, res) => {
   try {
     const quote = await fyers.getQuotes([symbol]);
     console.log(`[Stock Fetch] Symbol: ${symbol}`);
+    console.log(quote)
     res.json(quote);
   } catch (error) {
     console.error(`[Stock Fetch Error] ${symbol}`, error);
