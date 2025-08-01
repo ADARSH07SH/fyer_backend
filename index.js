@@ -110,18 +110,28 @@ app.get("/chartData/:stockname", apiKeyAuth, async (req, res) => {
 
   const inp = {
     symbol: symbol,
-    resolution: "5",  
+    resolution: "5", 
     date_format: "1",
     range_from,
     range_to,
     cont_flag: "1",
   };
 
+  console.log("Chart Input:", inp);
+
   try {
     const response = await fyers.getHistory(inp);
+    console.log("FYERS chart response:", response);
+
+    if (response.s !== "ok") {
+      return res
+        .status(500)
+        .json({ error: response.message || "Failed to fetch chart" });
+    }
+
     res.json(response);
   } catch (error) {
+    console.error("Chart data error:", error);
     res.status(500).json({ error: "Failed to fetch chart data." });
   }
 });
-
