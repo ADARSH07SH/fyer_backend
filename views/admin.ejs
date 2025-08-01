@@ -23,6 +23,9 @@
   <pre><%= JSON.stringify(token, null, 2) %></pre>
 
   <h2>Available Actions</h2>
- 
+  <a href="/profile"><button>Get Profile</button></a>
+  <a href="/getquote/tcs"><button>Get Default Quote</button></a>
+  <a href="/api/quote?symbols=NSE:TCS-EQ,NSE:SBIN-EQ"><button>Quote API (Dynamic)</button></a>
+  <a href="/api/depth?symbols=NSE:TCS-EQ"><button>Market Depth API</button></a>
 </body>
 </html>

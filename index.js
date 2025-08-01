@@ -24,6 +24,7 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
+
 app.get("/", (req, res) => {
   res.render("login");
 });
@@ -58,9 +59,89 @@ app.get("/admin", async (req, res) => {
 });
 
 
+app.get("/profile", async (req, res) => {
+  try {
+    const response = await fyers.get_profile();
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: "Profile fetch failed" });
+  }
+});
 
 
+app.get("/api/quote", async (req, res) => {
+  const symbols = req.query.symbols ? req.query.symbols.split(",") : [];
+  if (!symbols.length) {
+    return res.status(400).json({ error: "No symbols provided" });
+  }
+  try {
+    const quotes = await fyers.getQuotes(symbols);
+    res.json(quotes);
+  } catch (err) {
+    res.status(500).json({ error: "Quote fetch failed" });
+  }
+});
 
+
+app.get("/api/depth", async (req, res) => {
+  const symbols = req.query.symbols ? req.query.symbols.split(",") : [];
+  if (!symbols.length) {
+    return res.status(400).json({ error: "No symbols provided" });
+  }
+  try {
+    
+    const results = {};
+    for (const symbol of symbols) {
+      results[symbol] = await fyers.getMarketDepth({
+        symbol: [symbol],
+        ohlcv_flag: 1,
+      });
+    }
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: "Market depth fetch failed" });
+  }
+});
+
+// Historical OHLCV/candle data
+app.get("/api/history", async (req, res) => {
+  const { symbol, resolution, range_from, range_to } = req.query;
+  if (!symbol || !resolution || !range_from || !range_to) {
+    return res
+      .status(400)
+      .json({ error: "symbol, resolution, range_from, and range_to required" });
+  }
+  try {
+    const data = await fyers.getHistorical({
+      symbol,
+      resolution,
+      range_from,
+      range_to,
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: "History fetch failed" });
+  }
+});
+
+// ---------- Example: default symbols quotes for quick test ----------
+app.get("/getquote", async (req, res) => {
+  try {
+    const quotes = await fyers.getQuotes(["NSE:SBIN-EQ", "NSE:TCS-EQ"]);
+    res.json(quotes);
+  } catch (err) {
+    res.status(500).json({ error: "Quote fetch failed" });
+  }
+});
+
+// Optional: search / symbol master (for user-friendly search)
+app.get("/api/search", async (req, res) => {
+  const query = req.query.query ? req.query.query.toUpperCase() : "";
+  // For now, you can use a static or locally cached symbol master file
+  // FYERS API provides symbol master, or you can use a CSV/JSON mapping
+  // Respond with matches for symbol/name/segment, etc.
+  res.json({ error: "Not implemented. Add symbol master search logic here." });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
@@ -70,12 +151,11 @@ app.listen(PORT, () => {
 app.get("/stock/:stockname", async (req, res) => {
   const stockname = req.params.stockname.toUpperCase();
 
-
   try {
     const quote = await fyers.getQuotes([`NSE${stockname}`]);
-    
+
     console.log(stockname);
-    console.log(quote);
+    console.log(quote.d);
     res.json(quote);
   } catch (error) {
     console.log(error);
