@@ -1,14 +1,28 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>FYERS Admin</title>
-  </head>
-  <body>
-    <h2>Access Token</h2>
-    <pre><%= JSON.stringify(token, null, 2) %></pre>
-    <br />
-    <a href="/profile">View Profile</a>
-    <br />
-    <a href="/getquote?symbols=NSE:TCS-EQ,NSE:SBIN-EQ">Test Get Quote</a>
-  </body>
+<head>
+  <title>FYERS Admin</title>
+  <style>
+    pre {
+      background-color: #f7f7f7;
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 700px;
+      overflow-x: auto;
+    }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Access Token Received</h1>
+
+  <h3>Access Token Response:</h3>
+  <pre><%= JSON.stringify(token, null, 2) %></pre>
+
+  <h2>Available Actions</h2>
+ 
+</body>
 </html>
