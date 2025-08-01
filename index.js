@@ -7,16 +7,11 @@ const fs = require("fs");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-
 const FYERS_APP_ID = process.env.FYERS_APP_ID;
 const FYERS_SECRET_ID = process.env.FYERS_SECRET_ID;
 const FYERS_REDIRECT_URL = process.env.FYERS_REDIRECT_URL;
 
-const fyers = new fyersModel({
-  path: path.join(__dirname, "logs"),
-  enableLogging: false,
-});
-
+const fyers = new fyersModel({ path: path.join(__dirname, "logs") });
 fyers.setAppId(FYERS_APP_ID);
 fyers.setRedirectUrl(FYERS_REDIRECT_URL);
 
@@ -29,21 +24,17 @@ app.set("views", path.join(__dirname, "views"));
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
-// Login + Token Save Flow
 app.get("/", (req, res) => res.render("login"));
 
 app.get("/login", (req, res) => {
-  try {
-    const authUrl = fyers.generateAuthCode();
-    res.redirect(authUrl);
-  } catch {
-    res.status(500).send("Failed to generate auth URL.");
-  }
+  const authUrl = fyers.generateAuthCode();
+  console.log("Generated Auth URL:", authUrl);
+  res.redirect(authUrl);
 });
 
 app.get("/admin", async (req, res) => {
   const auth_code = req.query.auth_code;
-  if (!auth_code) return res.status(400).send("Missing auth_code.");
+  if (!auth_code) return res.status(400).send("Missing auth_code");
 
   try {
     const tokenResponse = await fyers.generate_access_token({
@@ -54,37 +45,40 @@ app.get("/admin", async (req, res) => {
 
     if (tokenResponse.s === "ok") {
       fs.writeFileSync(tokenFile, tokenResponse.access_token);
-      console.log("Saving token to file:", tokenResponse.access_token);
-
       fyers.setAccessToken(tokenResponse.access_token);
+      console.log("Access token saved:", tokenResponse.access_token);
       res.render("admin", { token: tokenResponse });
     } else {
-      res.status(500).send("Invalid access token response.");
+      console.log("Token generation failed:", tokenResponse);
+      res.status(500).send("Token generation failed.");
     }
-  } catch {
-    res.status(500).send("Token generation failed.");
+  } catch (err) {
+    console.error("Error generating token:", err.message);
+    res.status(500).send("Error during token exchange.");
   }
 });
-
 
 app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   const token = getSavedToken();
   if (!token) {
-    return res.status(401).json({ error: "Token missing. Login required." });
+    return res.status(401).json({ error: "Token missing. Login again." });
   }
 
   const stockname = req.params.stockname.toUpperCase();
   const symbol = `NSE:${stockname}-EQ`;
   fyers.setAccessToken(token);
+  console.log(`Fetching quote for: ${symbol}`);
 
   try {
     const quote = await fyers.getQuotes([symbol]);
+    console.log("Quote fetched:", quote);
     res.json(quote);
   } catch (err) {
+    console.error("Error fetching quote:", err.message);
     res.status(500).json({ error: "Failed to fetch quote." });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`FYERS Backend running on http://localhost:${PORT}`);
+  console.log(`FYERS Backend running at http://localhost:${PORT}`);
 });

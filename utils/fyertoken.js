@@ -5,8 +5,11 @@ const tokenFile = path.join(__dirname, "../access_token.txt");
 
 function getSavedToken() {
   if (fs.existsSync(tokenFile)) {
-    return fs.readFileSync(tokenFile, "utf8").trim();
+    const token = fs.readFileSync(tokenFile, "utf8").trim();
+    console.log("Loaded access token:", token);
+    return token;
   }
+  console.log("Token file not found.");
   return null;
 }
 
