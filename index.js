@@ -88,30 +88,40 @@ app.listen(PORT, () => {
   console.log(`FYERS Backend running at http://localhost:${PORT}`);
 });
 
-app.get("/chartData/:stockname", apiKeyAuth,async (req, res) => {
+app.get("/chartData/:stockname", apiKeyAuth, async (req, res) => {
   const record = await FyersToken.findOne();
   if (!record || !record.token) {
-    return res.status(401).json({error:"Token missing"})
+    return res.status(401).json({ error: "Token missing" });
   }
 
   const token = record.token;
   const stockname = req.params.stockname.toUpperCase();
   const symbol = `NSE:${stockname}-EQ`;
-  fyer.setAccessToken(token);
-  var inp = {
-    symbol: `${symbol}`,
-    resolution: "5",
-    data_format: "1",
-    range_from: "1690895400",
-    range_to: "1690976400",
+
+  fyers.setAccessToken(token);
+
+  const start = new Date();
+  start.setHours(9, 15, 0, 0);
+  const end = new Date();
+  end.setHours(15, 30, 0, 0);
+
+  const range_from = Math.floor(start.getTime() / 1000);
+  const range_to = Math.floor(end.getTime() / 1000);
+
+  const inp = {
+    symbol: symbol,
+    resolution: "5",  
+    date_format: "1",
+    range_from,
+    range_to,
     cont_flag: "1",
   };
-  try {
-    fyers.getHistory(inp).then((response) => {
-      console.log(response);
-    })
-  } catch (error) {
-     res.status(500).json({ error: "Failed to fetch " });
 
+  try {
+    const response = await fyers.getHistory(inp);
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch chart data." });
   }
-})
+});
+
