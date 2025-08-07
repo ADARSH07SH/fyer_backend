@@ -79,18 +79,26 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   try {
     const quote = await fyers.getQuotes([symbol]);
 
+    console.log("Raw FYERS Quote Response:", JSON.stringify(quote, null, 2));
+
     if (quote.s !== "ok") {
       return res.status(500).json({ error: "FYERS quote failed" });
     }
 
-    const quoteData = quote.d?.[0]?.v;
+    const data = quote.d?.[0];
 
-    if (!quoteData) {
+    if (!data || !data.v) {
       return res.status(500).json({ error: "Invalid quote format" });
     }
 
+    const quoteData = data.v;
+
+    console.log("Symbol Info:", data.n);
+    console.log("Full Quote Data:", JSON.stringify(quoteData, null, 2));
+    console.log(data);
+
     return res.json({
-      symbol: quote.d[0].n,
+      symbol: data.n,
       lastPrice: quoteData.last_price,
       open: quoteData.open_price,
       high: quoteData.high_price,
@@ -102,11 +110,24 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
       averageTradePrice: quoteData.average_trade_price,
       lowerCircuit: quoteData.lower_circuit_limit,
       upperCircuit: quoteData.upper_circuit_limit,
+      lastTradedQty: quoteData.last_traded_qty,
+      tradeValue: quoteData.trade_value,
+      tradeQty: quoteData.trade_qty,
+      ffBuyQty: quoteData.ff_buy_qty,
+      ffSellQty: quoteData.ff_sell_qty,
+      oi: quoteData.oi,
+      openInterestDayHigh: quoteData.oi_day_high,
+      openInterestDayLow: quoteData.oi_day_low,
+      atp: quoteData.atp,
+      lastTradeTime: quoteData.ltt,
+      lastTradeTimestamp: quoteData.ltp,
     });
   } catch (err) {
+    console.error("FYERS SDK Error:", err.message || err);
     res.status(500).json({ error: "Quote fetch failed" });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
