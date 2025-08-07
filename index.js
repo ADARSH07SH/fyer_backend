@@ -63,6 +63,7 @@ app.get("/admin", async (req, res) => {
   }
 });
 
+
 app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   const record = await FyersToken.findOne();
 
@@ -78,60 +79,37 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
 
   try {
     const quote = await fyers.getQuotes([symbol]);
-    res.json(quote);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch quote." });
-  }
-});
 
-app.listen(PORT, () => {
-  console.log(`FYERS Backend running at http://localhost:${PORT}`);
-});
-
-app.get("/chartData/:stockname", apiKeyAuth, async (req, res) => {
-  const record = await FyersToken.findOne();
-  if (!record || !record.token) {
-    return res.status(401).json({ error: "Token missing" });
-  }
-
-  const token = record.token;
-  const stockname = req.params.stockname.toUpperCase();
-  const symbol = `NSE:${stockname}-EQ`;
-
-  fyers.setAccessToken(token);
-
-  const start = new Date();
-  start.setHours(9, 15, 0, 0);
-  const end = new Date();
-  end.setHours(15, 30, 0, 0);
-
-  const range_from = Math.floor(start.getTime() / 1000);
-  const range_to = Math.floor(end.getTime() / 1000);
-
-  const inp = {
-    symbol: symbol,
-    resolution: "5",
-    date_format: "1",
-    range_from,
-    range_to,
-    cont_flag: "1",
-  };
-
-  console.log("Chart Input:", inp);
-
-  try {
-    const response = await fyers.getHistory(inp);
-    console.log("FYERS chart response:", response);
-
-    if (response.s !== "ok") {
-      return res
-        .status(500)
-        .json({ error: response.message || "Failed to fetch chart" });
+    if (quote.s !== "ok") {
+      console.error("FYERS quote error:", quote.message || quote);
+      return res.status(500).json({ error: "FYERS quote failed" });
     }
 
-    res.json(response);
-  } catch (error) {
-    console.error("Chart data error:", error);
-    res.status(500).json({ error: "Failed to fetch chart data." });
+    const quoteData = quote.d?.[0]?.v;
+
+    if (!quoteData) {
+      console.error("Invalid quote format", quote);
+      return res.status(500).json({ error: "Invalid quote format" });
+    }
+
+    console.log("Live Quote for", symbol, ":", quoteData);
+
+    return res.json({
+      symbol: quote.d[0].n,
+      lastPrice: quoteData.last_price,
+      open: quoteData.open_price,
+      high: quoteData.high_price,
+      low: quoteData.low_price,
+      prevClose: quoteData.prev_close_price,
+      volume: quoteData.volume,
+      totalBuyQty: quoteData.total_buy_qty,
+      totalSellQty: quoteData.total_sell_qty,
+      averageTradePrice: quoteData.average_trade_price,
+      lowerCircuit: quoteData.lower_circuit_limit,
+      upperCircuit: quoteData.upper_circuit_limit,
+    });
+  } catch (err) {
+    console.error("Quote fetch failed:", err.message || err);
+    res.status(500).json({ error: "Quote fetch failed" });
   }
 });
