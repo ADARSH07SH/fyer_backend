@@ -63,7 +63,6 @@ app.get("/admin", async (req, res) => {
   }
 });
 
-
 app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   const record = await FyersToken.findOne();
 
@@ -81,18 +80,14 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
     const quote = await fyers.getQuotes([symbol]);
 
     if (quote.s !== "ok") {
-      console.error("FYERS quote error:", quote.message || quote);
       return res.status(500).json({ error: "FYERS quote failed" });
     }
 
     const quoteData = quote.d?.[0]?.v;
 
     if (!quoteData) {
-      console.error("Invalid quote format", quote);
       return res.status(500).json({ error: "Invalid quote format" });
     }
-    console.log("data from fyer")
-    console.log("Live Quote for", symbol, ":", quoteData);
 
     return res.json({
       symbol: quote.d[0].n,
@@ -109,7 +104,10 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
       upperCircuit: quoteData.upper_circuit_limit,
     });
   } catch (err) {
-    console.error("Quote fetch failed:", err.message || err);
     res.status(500).json({ error: "Quote fetch failed" });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
