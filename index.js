@@ -91,7 +91,7 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
       console.error("Invalid quote format", quote);
       return res.status(500).json({ error: "Invalid quote format" });
     }
-
+    console.log("data from fyer")
     console.log("Live Quote for", symbol, ":", quoteData);
 
     return res.json({
