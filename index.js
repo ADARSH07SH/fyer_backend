@@ -3,7 +3,6 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const path = require("path");
 const { fyersModel } = require("fyers-api-v3");
-
 const connectDB = require("./config/db");
 const FyersToken = require("./models/FyersToken");
 const apiKeyAuth = require("./middleware/apiKeyAuth");
@@ -11,13 +10,9 @@ const apiKeyAuth = require("./middleware/apiKeyAuth");
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-const FYERS_APP_ID = process.env.FYERS_APP_ID;
-const FYERS_SECRET_ID = process.env.FYERS_SECRET_ID;
-const FYERS_REDIRECT_URL = process.env.FYERS_REDIRECT_URL;
-
 const fyers = new fyersModel();
-fyers.setAppId(FYERS_APP_ID);
-fyers.setRedirectUrl(FYERS_REDIRECT_URL);
+fyers.setAppId(process.env.FYERS_APP_ID);
+fyers.setRedirectUrl(process.env.FYERS_REDIRECT_URL);
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -39,95 +34,55 @@ app.get("/admin", async (req, res) => {
 
   try {
     const tokenResponse = await fyers.generate_access_token({
-      client_id: FYERS_APP_ID,
-      secret_key: FYERS_SECRET_ID,
+      client_id: process.env.FYERS_APP_ID,
+      secret_key: process.env.FYERS_SECRET_ID,
       auth_code,
     });
 
     if (tokenResponse.s === "ok") {
-      const accessToken = tokenResponse.access_token;
-
       await FyersToken.findOneAndUpdate(
         {},
-        { token: accessToken, updatedAt: new Date() },
+        { token: tokenResponse.access_token, updatedAt: new Date() },
         { upsert: true, new: true }
       );
-
-      fyers.setAccessToken(accessToken);
+      fyers.setAccessToken(tokenResponse.access_token);
       res.render("admin", { token: tokenResponse });
     } else {
       res.status(500).send("Token generation failed.");
     }
-  } catch (err) {
+  } catch {
     res.status(500).send("Error during token exchange.");
   }
 });
 
 app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   const record = await FyersToken.findOne();
-
-  if (!record || !record.token) {
+  if (!record?.token) {
     return res.status(401).json({ error: "Token missing. Login again." });
   }
 
-  const token = record.token;
+  fyers.setAccessToken(record.token);
   const stockname = req.params.stockname.toUpperCase();
   const symbol = `NSE:${stockname}-EQ`;
 
-  fyers.setAccessToken(token);
-
   try {
     const quote = await fyers.getQuotes([symbol]);
-
-    console.log("Raw FYERS Quote Response:", JSON.stringify(quote, null, 2));
 
     if (quote.s !== "ok") {
       return res.status(500).json({ error: "FYERS quote failed" });
     }
 
     const data = quote.d?.[0];
-
-    if (!data || !data.v) {
+    if (!data?.v) {
       return res.status(500).json({ error: "Invalid quote format" });
     }
 
-    const quoteData = data.v;
+    return res.json(quote);
 
-    console.log("Symbol Info:", data.n);
-    console.log("Full Quote Data:", JSON.stringify(quoteData, null, 2));
-    console.log(data);
-
-    return res.json({
-      symbol: data.n,
-      lastPrice: quoteData.last_price,
-      open: quoteData.open_price,
-      high: quoteData.high_price,
-      low: quoteData.low_price,
-      prevClose: quoteData.prev_close_price,
-      volume: quoteData.volume,
-      totalBuyQty: quoteData.total_buy_qty,
-      totalSellQty: quoteData.total_sell_qty,
-      averageTradePrice: quoteData.average_trade_price,
-      lowerCircuit: quoteData.lower_circuit_limit,
-      upperCircuit: quoteData.upper_circuit_limit,
-      lastTradedQty: quoteData.last_traded_qty,
-      tradeValue: quoteData.trade_value,
-      tradeQty: quoteData.trade_qty,
-      ffBuyQty: quoteData.ff_buy_qty,
-      ffSellQty: quoteData.ff_sell_qty,
-      oi: quoteData.oi,
-      openInterestDayHigh: quoteData.oi_day_high,
-      openInterestDayLow: quoteData.oi_day_low,
-      atp: quoteData.atp,
-      lastTradeTime: quoteData.ltt,
-      lastTradeTimestamp: quoteData.ltp,
-    });
   } catch (err) {
-    console.error("FYERS SDK Error:", err.message || err);
     res.status(500).json({ error: "Quote fetch failed" });
   }
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
