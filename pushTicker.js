@@ -23,7 +23,7 @@ const Ticker = mongoose.model("Ticker", tickerSchema);
 const nsePath = "D:/MS EDGE -DOWNLOADS/EQUITY_L.csv";
 const bsePath = "D:/MS EDGE -DOWNLOADS/Equity.csv";
 
-// Utility: Normalize headers
+
 const normalizeHeader = (header) =>
   header?.toString().trim().toLowerCase().replace(/\s+/g, "_");
 
@@ -86,7 +86,7 @@ const run = async () => {
 
     console.log(`Uploading ${allTickers.length} tickers to MongoDB...`);
 
-    await Ticker.deleteMany(); // Optional
+    await Ticker.deleteMany();
     await Ticker.insertMany(allTickers);
 
     console.log(" Successfully inserted all ticker data.");
