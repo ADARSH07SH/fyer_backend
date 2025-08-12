@@ -132,3 +132,48 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
+
+
+const fetchCandleDataPeriodically = async () => {
+  try {
+    const record = await FyersToken.findOne();
+    if (!record?.token) {
+      console.error("Token missing. Login again.");
+      return;
+    }
+
+    fyers.setAccessToken(record.token);
+
+    // Prepare parameters for the last 5 minutes of 1-minute candles
+    const symbol = "NSE:SBIN-EQ";
+    const resolution = "1"; // 1-minute candles
+    const range_to = Math.floor(Date.now() / 1000); // current time in seconds
+    const range_from = range_to - 60 * 5; // 5 minutes ago
+
+    const inp = {
+      symbol: symbol.toUpperCase(),
+      resolution: resolution,
+      date_format: "0",
+      range_from: range_from,
+      range_to: range_to,
+      cont_flag: "1",
+    };
+
+    const chartData = await fyers.getHistory(inp);
+
+    if (chartData.s !== "ok") {
+      console.error("FYERS chart fetch failed", chartData);
+    } else {
+      console.log("Fetched candle data:", chartData);
+      // You can add code here to save or process the candle data as needed
+    }
+  } catch (err) {
+    console.error("Error fetching candle data:", err);
+  }
+};
+
+// Start periodic fetching 1 minute after server starts, repeat every 1 minute
+setTimeout(() => {
+  fetchCandleDataPeriodically(); // initial call
+  setInterval(fetchCandleDataPeriodically, 60000); // repeat every 60000 ms (1 minute)
+}, 60000);
