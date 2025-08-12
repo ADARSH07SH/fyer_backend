@@ -56,6 +56,8 @@ app.get("/admin", async (req, res) => {
 });
 
 app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
+
+
   const record = await FyersToken.findOne();
   if (!record?.token) {
     return res.status(401).json({ error: "Token missing. Login again." });
@@ -84,6 +86,49 @@ app.get("/stockData/:stockname", apiKeyAuth, async (req, res) => {
   }
 });
 
+app.get("/getChart", apiKeyAuth, async (req, res) => {
+  const { symbol, resolution, range_from, range_to } = req.query;
+
+  if (!symbol || !resolution || !range_from || !range_to) {
+    return res.status(400).json({
+      error:
+        "Missing required query parameters: symbol, resolution, range_from, range_to",
+    });
+  }
+
+  try {
+    const record = await FyersToken.findOne();
+    if (!record?.token) {
+      return res.status(401).json({ error: "Token missing. Login again." });
+    }
+
+    fyers.setAccessToken(record.token);
+
+    const inp = {
+      symbol: symbol.toUpperCase(), 
+      resolution: resolution, 
+      date_format: "0",
+      range_from: range_from, 
+      range_to: range_to, 
+      cont_flag: "1",
+    };
+
+    const chartData = await fyers.getHistory(inp);
+
+    if (chartData.s !== "ok") {
+      return res
+        .status(500)
+        .json({ error: "FYERS chart fetch failed", details: chartData });
+    }
+
+    return res.json(chartData);
+  } catch (err) {
+    console.error("Error fetching chart:", err);
+    res.status(500).json({ error: "Server error while fetching chart data" });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
