@@ -1,7 +1,12 @@
+# Node modules
 node_modules/
 
+# Environment variables
 .env
 
-/logs
-
+# Logs directory
 logs/
+logs/*.log
+
+# Any log file in the project root
+*.log
