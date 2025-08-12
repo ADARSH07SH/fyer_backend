@@ -124,7 +124,7 @@ app.get("/getChart", apiKeyAuth, async (req, res) => {
     return res.json(chartData);
   } catch (err) {
     console.error("Error fetching chart:", err);
-    res.status(500).json({ error: "Server error while fetching chart data" });
+    res.status(500).json({ error: "Server error while fetching chart " });
   }
 });
 
