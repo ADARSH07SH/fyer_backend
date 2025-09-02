@@ -1,28 +1,26 @@
 {
   "name": "fyerbackendcode",
   "version": "1.0.0",
+  "description": "Backend for Fyer project",
   "main": "index.js",
-   "scripts": {
-    "start": "node index.js",             
-    "dev": "nodemon index.js",            
-    "install": "npm install"            
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Your Name",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "csv-parser": "^3.2.0",
     "dotenv": "^17.2.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.1",
-    "fs": "^0.0.1-security",
     "fyers-api-v3": "^1.4.2",
     "mongoose": "^8.18.0",
-    "node": "^20.19.4",
-    "node-cache": "^5.1.2",
-    "nodemon": "^3.1.10",
-    "path": "^0.12.7"
+    "node-cache": "^5.1.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
