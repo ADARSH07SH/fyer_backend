@@ -1,5 +1,5 @@
-const express = require("express");
 require("dotenv").config();
+const express = require("express");
 const mongoose = require("mongoose");
 const path = require("path");
 const NodeCache = require("node-cache");
@@ -10,7 +10,8 @@ const FyersToken = require("./models/FyersToken");
 const apiKeyAuth = require("./middleware/apiKeyAuth");
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT||8080;
+console.log(PORT)
 
 const fyers = new fyersModel();
 fyers.setAppId(process.env.FYERS_APP_ID);
