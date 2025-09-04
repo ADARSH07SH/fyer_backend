@@ -10,18 +10,18 @@ const FyersToken = require("./models/FyersToken");
 const apiKeyAuth = require("./middleware/apiKeyAuth");
 
 const app = express();
-const PORT = process.env.PORT||8080;
-console.log(PORT)
+const PORT = process.env.PORT || 8080;
+console.log(PORT);
 
 const fyers = new fyersModel();
 fyers.setAppId(process.env.FYERS_APP_ID);
 fyers.setRedirectUrl(process.env.FYERS_REDIRECT_URL);
 
-const cache = new NodeCache({ stdTTL: process.env.CACHE_TTL || 30 });
+const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
 const fyersRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: process.env.FYERS_RATE_LIMIT_PER_MINUTE || 180,
+  max: Number(process.env.FYERS_RATE_LIMIT_PER_MINUTE) || 180,
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
@@ -38,7 +38,10 @@ class FyersRequestManager {
     this.lastMinute = Math.floor(Date.now() / 60000);
   }
 
-  async makeRequest(requestFn, retries = process.env.RETRY_ATTEMPTS || 3) {
+  async makeRequest(
+    requestFn,
+    retries = Number(process.env.RETRY_ATTEMPTS) || 3
+  ) {
     return new Promise((resolve, reject) => {
       this.queue.push({ requestFn, retries, resolve, reject });
       this.processQueue();
@@ -65,9 +68,9 @@ class FyersRequestManager {
 
       if (
         this.requestCount.perSecond >=
-          (process.env.FYERS_RATE_LIMIT_PER_SECOND || 8) ||
+          (Number(process.env.FYERS_RATE_LIMIT_PER_SECOND) || 8) ||
         this.requestCount.perMinute >=
-          (process.env.FYERS_RATE_LIMIT_PER_MINUTE || 180)
+          (Number(process.env.FYERS_RATE_LIMIT_PER_MINUTE) || 180)
       ) {
         await delay(1100);
         continue;
@@ -82,9 +85,9 @@ class FyersRequestManager {
         resolve(result);
         await delay(100);
       } catch (error) {
+        const msg = error?.message || String(error);
         if (
-          (error.message.includes("429") ||
-            error.message.includes("Too Many Requests")) &&
+          (msg.includes("429") || msg.includes("Too Many Requests")) &&
           retries > 0
         ) {
           await delay(Math.pow(2, 4 - retries) * 1000);
@@ -181,7 +184,7 @@ app.get(
       );
       if (quote.s !== "ok")
         return res.status(500).json({ error: "FYERS quote failed" });
-      cache.set(cacheKey, quote, process.env.CACHE_TTL || 30);
+      cache.set(cacheKey, quote, Number(process.env.CACHE_TTL) || 30);
       res.json(quote);
     } catch (err) {
       res.status(500).json({ error: "Quote fetch failed" });
