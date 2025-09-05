@@ -225,4 +225,8 @@ app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
   }
 });
 
+app.get("/wakeupserver", (req, res) => {
+  res.status(200).json({ message: "Fyer backend is awake " });
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
