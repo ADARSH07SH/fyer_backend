@@ -1,6 +1,5 @@
 require("dotenv").config();
 const express = require("express");
-const mongoose = require("mongoose");
 const path = require("path");
 const NodeCache = require("node-cache");
 const rateLimit = require("express-rate-limit");
@@ -8,14 +7,10 @@ const { fyersModel } = require("fyers-api-v3");
 const connectDB = require("./config/db");
 const FyersToken = require("./models/FyersToken");
 const apiKeyAuth = require("./middleware/apiKeyAuth");
+const { refreshAccessToken, fyers } = require("./utils/refreshToken");
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-console.log(PORT);
-
-const fyers = new fyersModel();
-fyers.setAppId(process.env.FYERS_APP_ID);
-fyers.setRedirectUrl(process.env.FYERS_REDIRECT_URL);
 
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
@@ -148,7 +143,11 @@ app.get("/admin", async (req, res) => {
     if (tokenResponse.s === "ok") {
       await FyersToken.findOneAndUpdate(
         {},
-        { token: tokenResponse.access_token, updatedAt: new Date() },
+        {
+          token: tokenResponse.access_token,
+          refreshToken: tokenResponse.refresh_token,
+          updatedAt: new Date(),
+        },
         { upsert: true, new: true }
       );
       fyers.setAccessToken(tokenResponse.access_token);
@@ -156,7 +155,7 @@ app.get("/admin", async (req, res) => {
     } else {
       res.status(500).send("Token generation failed.");
     }
-  } catch {
+  } catch (err) {
     res.status(500).send("Error during token exchange.");
   }
 });
@@ -171,23 +170,33 @@ app.get(
     const cachedData = cache.get(cacheKey);
     if (cachedData) return res.json(cachedData);
 
-    const record = await FyersToken.findOne();
-    if (!record?.token)
-      return res.status(401).json({ error: "Token missing. Login again." });
+    let record = await FyersToken.findOne();
+    if (!record?.token || !record?.refreshToken)
+      return res
+        .status(401)
+        .json({ error: "Token missing. Please login again." });
 
     fyers.setAccessToken(record.token);
     const symbol = `NSE:${stockname}-EQ`;
 
     try {
-      const quote = await fyersManager.makeRequest(async () =>
+      let quote = await fyersManager.makeRequest(() =>
         fyers.getQuotes([symbol])
       );
+
+      if (quote.s === "error" && quote.message.includes("Unauthorized")) {
+        const newAccessToken = await refreshAccessToken();
+        fyers.setAccessToken(newAccessToken);
+        quote = await fyersManager.makeRequest(() => fyers.getQuotes([symbol]));
+      }
+
       if (quote.s !== "ok")
         return res.status(500).json({ error: "FYERS quote failed" });
+
       cache.set(cacheKey, quote, Number(process.env.CACHE_TTL) || 30);
       res.json(quote);
     } catch (err) {
-      res.status(500).json({ error: "Quote fetch failed" });
+      res.status(500).json({ error: "Quote fetch failed after retry." });
     }
   }
 );
@@ -195,16 +204,20 @@ app.get(
 app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
   const { symbol, resolution, range_from, range_to } = req.query;
   if (!symbol || !resolution || !range_from || !range_to)
-    return res.status(400).json({ error: "Missing required query parameters" });
+    return res
+      .status(400)
+      .json({ error: "Missing required query parameters." });
 
-  const record = await FyersToken.findOne();
-  if (!record?.token)
-    return res.status(401).json({ error: "Token missing. Login again." });
+  let record = await FyersToken.findOne();
+  if (!record?.token || !record?.refreshToken)
+    return res
+      .status(401)
+      .json({ error: "Token missing. Please login again." });
 
   fyers.setAccessToken(record.token);
 
   try {
-    const chartData = await fyersManager.makeRequest(async () =>
+    let chartData = await fyersManager.makeRequest(() =>
       fyers.getHistory({
         symbol: symbol.toUpperCase(),
         resolution,
@@ -215,18 +228,34 @@ app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
       })
     );
 
+    if (chartData.s === "error" && chartData.message.includes("Unauthorized")) {
+      const newAccessToken = await refreshAccessToken();
+      fyers.setAccessToken(newAccessToken);
+      chartData = await fyersManager.makeRequest(() =>
+        fyers.getHistory({
+          symbol: symbol.toUpperCase(),
+          resolution,
+          date_format: "0",
+          range_from,
+          range_to,
+          cont_flag: "1",
+        })
+      );
+    }
+
     if (chartData.s !== "ok")
       return res
         .status(500)
         .json({ error: "FYERS chart fetch failed", details: chartData });
+
     res.json(chartData);
   } catch (err) {
-    res.status(500).json({ error: "Server error while fetching chart" });
+    res.status(500).json({ error: "Server error while fetching chart." });
   }
 });
 
 app.get("/wakeupserver", (req, res) => {
-  res.status(200).json({ message: "Fyer backend is awake " });
+  res.status(200).json({ message: "Fyers backend is awake." });
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
