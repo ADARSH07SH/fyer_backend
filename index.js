@@ -10,7 +10,13 @@ const apiKeyAuth = require("./middleware/apiKeyAuth");
 const { refreshAccessToken, fyers } = require("./utils/refreshToken");
 
 const app = express();
-const PORT = process.env.PORT || 8080;
+
+const PORT = process.env.PORT || 3001;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Fyers backend running on port ${PORT}`);
+});
+
 
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
@@ -258,4 +264,3 @@ app.get("/wakeupserver", (req, res) => {
   res.status(200).json({ message: "Fyers backend is awake." });
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
