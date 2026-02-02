@@ -3,264 +3,128 @@ const express = require("express");
 const path = require("path");
 const NodeCache = require("node-cache");
 const rateLimit = require("express-rate-limit");
-const { fyersModel } = require("fyers-api-v3");
+
 const connectDB = require("./config/db");
 const FyersToken = require("./models/FyersToken");
 const apiKeyAuth = require("./middleware/apiKeyAuth");
-const { refreshAccessToken, fyers } = require("./utils/refreshToken");
+
+const fyers = require("./utils/fyersClient");
+const getValidAccessToken = require("./utils/getValidAccessToken");
 
 const app = express();
+const INTERNAL_PORT = 3000;
 
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Fyers backend running on port ${PORT}`);
+app.listen(INTERNAL_PORT, "0.0.0.0", () => {
+  console.log("Service started");
 });
 
+connectDB();
 
+// ---------------- BASIC SETUP ----------------
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
 const fyersRateLimit = rateLimit({
   windowMs: 60 * 1000,
   max: Number(process.env.FYERS_RATE_LIMIT_PER_MINUTE) || 180,
-  message: { error: "Too many requests, please try again later" },
-  standardHeaders: true,
-  legacyHeaders: false,
 });
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-class FyersRequestManager {
-  constructor() {
-    this.queue = [];
-    this.processing = false;
-    this.requestCount = { perSecond: 0, perMinute: 0 };
-    this.lastSecond = Math.floor(Date.now() / 1000);
-    this.lastMinute = Math.floor(Date.now() / 60000);
-  }
-
-  async makeRequest(
-    requestFn,
-    retries = Number(process.env.RETRY_ATTEMPTS) || 3
-  ) {
-    return new Promise((resolve, reject) => {
-      this.queue.push({ requestFn, retries, resolve, reject });
-      this.processQueue();
-    });
-  }
-
-  async processQueue() {
-    if (this.processing || this.queue.length === 0) return;
-    this.processing = true;
-
-    while (this.queue.length > 0) {
-      const currentSecond = Math.floor(Date.now() / 1000);
-      const currentMinute = Math.floor(Date.now() / 60000);
-
-      if (currentSecond !== this.lastSecond) {
-        this.requestCount.perSecond = 0;
-        this.lastSecond = currentSecond;
-      }
-
-      if (currentMinute !== this.lastMinute) {
-        this.requestCount.perMinute = 0;
-        this.lastMinute = currentMinute;
-      }
-
-      if (
-        this.requestCount.perSecond >=
-          (Number(process.env.FYERS_RATE_LIMIT_PER_SECOND) || 8) ||
-        this.requestCount.perMinute >=
-          (Number(process.env.FYERS_RATE_LIMIT_PER_MINUTE) || 180)
-      ) {
-        await delay(1100);
-        continue;
-      }
-
-      const { requestFn, retries, resolve, reject } = this.queue.shift();
-
-      try {
-        this.requestCount.perSecond++;
-        this.requestCount.perMinute++;
-        const result = await requestFn();
-        resolve(result);
-        await delay(100);
-      } catch (error) {
-        const msg = error?.message || String(error);
-        if (
-          (msg.includes("429") || msg.includes("Too Many Requests")) &&
-          retries > 0
-        ) {
-          await delay(Math.pow(2, 4 - retries) * 1000);
-          this.queue.unshift({
-            requestFn,
-            retries: retries - 1,
-            resolve,
-            reject,
-          });
-        } else {
-          reject(error);
-        }
-      }
-    }
-
-    this.processing = false;
-  }
-}
-
-const fyersManager = new FyersRequestManager();
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
 app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, x-api-key"
-  );
-  res.setHeader("User-Agent", "Mozilla/5.0 (compatible; StockApp/1.0)");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-api-key");
   next();
 });
 
-connectDB();
+// ---------------- ROUTES ----------------
 
-app.get("/", (req, res) => res.render("login"));
+app.get("/", (_, res) => res.render("login"));
 
-app.get("/login", (req, res) => {
-  const authUrl = fyers.generateAuthCode();
-  res.redirect(authUrl);
+app.get("/login", (_, res) => {
+  res.redirect(fyers.generateAuthCode());
 });
 
+// 🔑 FIRST LOGIN
 app.get("/admin", async (req, res) => {
   const auth_code = req.query.auth_code;
   if (!auth_code) return res.status(400).send("Missing auth_code");
 
-  try {
-    const tokenResponse = await fyers.generate_access_token({
-      client_id: process.env.FYERS_APP_ID,
-      secret_key: process.env.FYERS_SECRET_ID,
-      auth_code,
-    });
+  const tokenResponse = await fyers.generate_access_token({
+    client_id: process.env.FYERS_APP_ID,
+    secret_key: process.env.FYERS_SECRET_ID,
+    auth_code,
+  });
 
-    if (tokenResponse.s === "ok") {
-      await FyersToken.findOneAndUpdate(
-        {},
-        {
-          token: tokenResponse.access_token,
-          refreshToken: tokenResponse.refresh_token,
-          updatedAt: new Date(),
-        },
-        { upsert: true, new: true }
-      );
-      fyers.setAccessToken(tokenResponse.access_token);
-      res.render("admin", { token: tokenResponse });
-    } else {
-      res.status(500).send("Token generation failed.");
-    }
-  } catch (err) {
-    res.status(500).send("Error during token exchange.");
+  if (tokenResponse.s !== "ok") {
+    return res.status(500).send("Token generation failed");
+  }
+
+  await FyersToken.findOneAndUpdate(
+    {},
+    {
+      token: tokenResponse.access_token,
+      refreshToken: tokenResponse.refresh_token,
+      expiresAt: Date.now() + 23 * 60 * 60 * 1000,
+      updatedAt: new Date(),
+    },
+    { upsert: true },
+  );
+
+  res.render("admin");
+});
+
+// ---------------- STOCK DATA ----------------
+app.get("/stockData/:stock", fyersRateLimit, apiKeyAuth, async (req, res) => {
+  const stock = req.params.stock.toUpperCase();
+  const cacheKey = `stock_${stock}`;
+
+  if (cache.has(cacheKey)) {
+    return res.json(cache.get(cacheKey));
+  }
+
+  try {
+    const token = await getValidAccessToken();
+    fyers.setAccessToken(token);
+
+    const quote = await fyers.getQuotes([`NSE:${stock}-EQ`]);
+    if (quote.s !== "ok") throw new Error();
+
+    cache.set(cacheKey, quote);
+    res.json(quote);
+  } catch {
+    res.status(500).json({ error: "Stock fetch failed" });
   }
 });
 
-app.get(
-  "/stockData/:stockname",
-  fyersRateLimit,
-  apiKeyAuth,
-  async (req, res) => {
-    const stockname = req.params.stockname.toUpperCase();
-    const cacheKey = `stock_${stockname}`;
-    const cachedData = cache.get(cacheKey);
-    if (cachedData) return res.json(cachedData);
-
-    let record = await FyersToken.findOne();
-    if (!record?.token || !record?.refreshToken)
-      return res
-        .status(401)
-        .json({ error: "Token missing. Please login again." });
-
-    fyers.setAccessToken(record.token);
-    const symbol = `NSE:${stockname}-EQ`;
-
-    try {
-      let quote = await fyersManager.makeRequest(() =>
-        fyers.getQuotes([symbol])
-      );
-
-      if (quote.s === "error" && quote.message.includes("Unauthorized")) {
-        const newAccessToken = await refreshAccessToken();
-        fyers.setAccessToken(newAccessToken);
-        quote = await fyersManager.makeRequest(() => fyers.getQuotes([symbol]));
-      }
-
-      if (quote.s !== "ok")
-        return res.status(500).json({ error: "FYERS quote failed" });
-
-      cache.set(cacheKey, quote, Number(process.env.CACHE_TTL) || 30);
-      res.json(quote);
-    } catch (err) {
-      res.status(500).json({ error: "Quote fetch failed after retry." });
-    }
-  }
-);
-
+// ---------------- CHART ----------------
 app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
   const { symbol, resolution, range_from, range_to } = req.query;
-  if (!symbol || !resolution || !range_from || !range_to)
-    return res
-      .status(400)
-      .json({ error: "Missing required query parameters." });
-
-  let record = await FyersToken.findOne();
-  if (!record?.token || !record?.refreshToken)
-    return res
-      .status(401)
-      .json({ error: "Token missing. Please login again." });
-
-  fyers.setAccessToken(record.token);
+  if (!symbol || !resolution || !range_from || !range_to) {
+    return res.status(400).json({ error: "Missing params" });
+  }
 
   try {
-    let chartData = await fyersManager.makeRequest(() =>
-      fyers.getHistory({
-        symbol: symbol.toUpperCase(),
-        resolution,
-        date_format: "0",
-        range_from,
-        range_to,
-        cont_flag: "1",
-      })
-    );
+    const token = await getValidAccessToken();
+    fyers.setAccessToken(token);
 
-    if (chartData.s === "error" && chartData.message.includes("Unauthorized")) {
-      const newAccessToken = await refreshAccessToken();
-      fyers.setAccessToken(newAccessToken);
-      chartData = await fyersManager.makeRequest(() =>
-        fyers.getHistory({
-          symbol: symbol.toUpperCase(),
-          resolution,
-          date_format: "0",
-          range_from,
-          range_to,
-          cont_flag: "1",
-        })
-      );
-    }
+    const chart = await fyers.getHistory({
+      symbol: symbol.toUpperCase(),
+      resolution,
+      date_format: "0",
+      range_from,
+      range_to,
+      cont_flag: "1",
+    });
 
-    if (chartData.s !== "ok")
-      return res
-        .status(500)
-        .json({ error: "FYERS chart fetch failed", details: chartData });
-
-    res.json(chartData);
-  } catch (err) {
-    res.status(500).json({ error: "Server error while fetching chart." });
+    if (chart.s !== "ok") throw new Error();
+    res.json(chart);
+  } catch {
+    res.status(500).json({ error: "Chart fetch failed" });
   }
 });
 
-app.get("/wakeupserver", (req, res) => {
-  res.status(200).json({ message: "Fyers backend is awake." });
-});
-
+app.get("/wakeupserver", (_, res) => res.json({ message: "Server awake" }));

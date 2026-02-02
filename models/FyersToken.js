@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 
-const FyersTokenSchema = new mongoose.Schema({
-  token: { type: String, required: true },
-  refreshToken: { type: String, required: true },
+const fyersTokenSchema = new mongoose.Schema({
+  token: String,
+  refreshToken: String,
+  expiresAt: Number, // timestamp
   updatedAt: { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model("FyersToken", FyersTokenSchema);
+module.exports = mongoose.model("FyersToken", fyersTokenSchema);
