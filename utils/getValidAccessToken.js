@@ -8,7 +8,6 @@ async function getValidAccessToken() {
   const record = await FyersToken.findOne();
   if (!record) throw new Error("No FYERS token found");
 
-  // ✅ token still valid
   if (record.expiresAt && Date.now() < record.expiresAt) {
     return record.token;
   }

@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const fyersTokenSchema = new mongoose.Schema({
   token: String,
   refreshToken: String,
-  expiresAt: Number, // timestamp
+  expiresAt: Number,
   updatedAt: { type: Date, default: Date.now },
 });
 

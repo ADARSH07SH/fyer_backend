@@ -20,7 +20,7 @@ app.listen(INTERNAL_PORT, "0.0.0.0", () => {
 
 connectDB();
 
-// ---------------- BASIC SETUP ----------------
+
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
 const fyersRateLimit = rateLimit({
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ---------------- ROUTES ----------------
+
 
 app.get("/", (_, res) => res.render("login"));
 
@@ -77,7 +77,7 @@ app.get("/admin", async (req, res) => {
   res.render("admin");
 });
 
-// ---------------- STOCK DATA ----------------
+
 app.get("/stockData/:stock", fyersRateLimit, apiKeyAuth, async (req, res) => {
   const stock = req.params.stock.toUpperCase();
   const cacheKey = `stock_${stock}`;
@@ -100,7 +100,7 @@ app.get("/stockData/:stock", fyersRateLimit, apiKeyAuth, async (req, res) => {
   }
 });
 
-// ---------------- CHART ----------------
+
 app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
   const { symbol, resolution, range_from, range_to } = req.query;
   if (!symbol || !resolution || !range_from || !range_to) {

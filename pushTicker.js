@@ -3,24 +3,21 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const csv = require("csv-parser");
 
-/* ================= Mongo Connection ================= */
+
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
 
 mongoose.connection.on("connected", () => {
-  console.log("✅ MongoDB connected");
+  console.log("MongoDB connected");
 });
 
 mongoose.connection.on("error", (err) => {
-  console.error("❌ MongoDB connection error:", err);
+  console.error(" MongoDB connection error:", err);
 });
 
-/* ================= Schema =================
-   Only the fields you want:
-   source, symbol, name, isin
-*/
+
 const tickerSchema = new mongoose.Schema({
   source: { type: String, required: true },
   symbol: { type: String, required: true },
@@ -30,11 +27,10 @@ const tickerSchema = new mongoose.Schema({
 
 const Ticker = mongoose.model("Ticker", tickerSchema);
 
-/* ================= File Paths ================= */
 const nsePath = "D:/MS EDGE -DOWNLOADS/EQUITY_L.csv";
 const bsePath = "D:/MS EDGE -DOWNLOADS/Equity.csv";
 
-/* ================= Helpers ================= */
+
 const normalizeHeader = (header) =>
   header.toString().trim().toLowerCase().replace(/\s+/g, "_");
 
@@ -75,7 +71,7 @@ const readNSE = () => {
         const name = clean(row.name_of_company);
         const isin = clean(row.isin_number);
 
-        // Skip invalid rows
+     
         if (!symbol || !name || !isin) return;
 
         results.push({
@@ -93,7 +89,7 @@ const readNSE = () => {
   });
 };
 
-/* ================= Read BSE CSV ================= */
+
 const readBSE = () => {
   return new Promise((resolve, reject) => {
     const results = [];
@@ -123,7 +119,7 @@ const readBSE = () => {
   });
 };
 
-/* ================= Runner ================= */
+
 const run = async () => {
   try {
     const nseData = await readNSE();
@@ -136,10 +132,10 @@ const run = async () => {
     await Ticker.deleteMany({});
     await Ticker.insertMany(allTickers);
 
-    console.log("🎉 Successfully inserted all ticker data!");
+    console.log(" Successfully inserted all ticker data!");
     mongoose.disconnect();
   } catch (err) {
-    console.error("❌ Failed to upload tickers:", err);
+    console.error(" Failed to upload tickers:", err);
     mongoose.disconnect();
   }
 };
