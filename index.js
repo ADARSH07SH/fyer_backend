@@ -64,7 +64,7 @@ app.get("/admin", async (req, res) => {
     {
       token: tokenResponse.access_token,
       refreshToken: tokenResponse.refresh_token,
-      expiresAt: Date.now() + tokenResponse.expires_in * 1000,
+      expiresAt: Date.now() + 23 * 60 * 60 * 1000,
       updatedAt: new Date(),
     },
     { upsert: true },

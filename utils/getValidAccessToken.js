@@ -22,7 +22,7 @@ async function getValidAccessToken() {
     {},
     {
       token: response.access_token,
-      expiresAt: Date.now() + response.expires_in * 1000,
+      expiresAt: Date.now() + 23 * 60 * 60 * 1000,
       updatedAt: new Date(),
     },
   );
