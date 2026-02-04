@@ -1,8 +1,5 @@
-const crypto = require("crypto");
-const axios = require("axios");
 const FyersToken = require("../models/FyersToken");
-
-const REFRESH_URL = "https://api.fyers.in/api/v2/refresh-token";
+const fyers = require("./fyersClient");
 
 async function getValidAccessToken() {
   const record = await FyersToken.findOne();
@@ -12,32 +9,25 @@ async function getValidAccessToken() {
     return record.token;
   }
 
-  const appIdHash = crypto
-    .createHash("sha256")
-    .update(`${process.env.FYERS_APP_ID}:${process.env.FYERS_SECRET_ID}`)
-    .digest("hex");
-
-  const res = await axios.post(REFRESH_URL, {
+  const response = await fyers.generate_access_token({
     grant_type: "refresh_token",
-    appIdHash,
     refresh_token: record.refreshToken,
-    pin: process.env.FYERS_PIN,
   });
 
-  if (!res.data?.access_token) {
+  if (response.s !== "ok") {
     throw new Error("Refresh token failed");
   }
 
   await FyersToken.updateOne(
     {},
     {
-      token: res.data.access_token,
-      expiresAt: Date.now() + 23 * 60 * 60 * 1000,
+      token: response.access_token,
+      expiresAt: Date.now() + response.expires_in * 1000,
       updatedAt: new Date(),
     },
   );
 
-  return res.data.access_token;
+  return response.access_token;
 }
 
 module.exports = getValidAccessToken;

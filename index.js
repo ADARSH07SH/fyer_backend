@@ -12,14 +12,13 @@ const fyers = require("./utils/fyersClient");
 const getValidAccessToken = require("./utils/getValidAccessToken");
 
 const app = express();
-const INTERNAL_PORT = 3000;
-
-app.listen(INTERNAL_PORT, "0.0.0.0", () => {
-  console.log("Service started");
-});
+const PORT = 3000;
 
 connectDB();
 
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Service started");
+});
 
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
@@ -40,15 +39,12 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
 app.get("/", (_, res) => res.render("login"));
 
 app.get("/login", (_, res) => {
   res.redirect(fyers.generateAuthCode());
 });
 
-// 🔑 FIRST LOGIN
 app.get("/admin", async (req, res) => {
   const auth_code = req.query.auth_code;
   if (!auth_code) return res.status(400).send("Missing auth_code");
@@ -68,7 +64,7 @@ app.get("/admin", async (req, res) => {
     {
       token: tokenResponse.access_token,
       refreshToken: tokenResponse.refresh_token,
-      expiresAt: Date.now() + 23 * 60 * 60 * 1000,
+      expiresAt: Date.now() + tokenResponse.expires_in * 1000,
       updatedAt: new Date(),
     },
     { upsert: true },
@@ -76,7 +72,6 @@ app.get("/admin", async (req, res) => {
 
   res.render("admin");
 });
-
 
 app.get("/stockData/:stock", fyersRateLimit, apiKeyAuth, async (req, res) => {
   const stock = req.params.stock.toUpperCase();
@@ -95,11 +90,10 @@ app.get("/stockData/:stock", fyersRateLimit, apiKeyAuth, async (req, res) => {
 
     cache.set(cacheKey, quote);
     res.json(quote);
-  } catch {
-    res.status(500).json({ error: "Stock fetch failed" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
-
 
 app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
   const { symbol, resolution, range_from, range_to } = req.query;
@@ -122,8 +116,8 @@ app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
 
     if (chart.s !== "ok") throw new Error();
     res.json(chart);
-  } catch {
-    res.status(500).json({ error: "Chart fetch failed" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
