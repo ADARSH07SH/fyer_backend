@@ -20,6 +20,8 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("Service started");
 });
 
+app.set('trust proxy', true);
+
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
 const fyersRateLimit = rateLimit({
