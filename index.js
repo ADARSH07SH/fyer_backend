@@ -19,8 +19,8 @@ connectDB();
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Service started");
 });
+app.set("trust proxy", 1);
 
-app.set('trust proxy', true);
 
 const cache = new NodeCache({ stdTTL: Number(process.env.CACHE_TTL) || 30 });
 
@@ -91,6 +91,7 @@ app.get("/stockData/:stock", fyersRateLimit, apiKeyAuth, async (req, res) => {
     if (quote.s !== "ok") throw new Error();
 
     cache.set(cacheKey, quote);
+    res.type("json");
     res.json(quote);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -117,6 +118,7 @@ app.get("/getChart", fyersRateLimit, apiKeyAuth, async (req, res) => {
     });
 
     if (chart.s !== "ok") throw new Error();
+    res.type("json");
     res.json(chart);
   } catch (err) {
     res.status(500).json({ error: err.message });
